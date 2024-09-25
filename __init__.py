@@ -20,11 +20,5 @@ __plugin_meta__ = PluginMetadata(
     config=Config
 )
 
-config = nonebot.get_driver().config
-
 # 从全局配置中获取插件配置
 plugin_config = get_plugin_config(Config)
-
-chat_matcher = on_command('chat', rule=to_me(), aliases={''}, priority=plugin_config.chat_command_priority)
-
-

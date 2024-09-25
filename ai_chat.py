@@ -22,28 +22,39 @@ from nonebot_plugin_alconna.uniseg import UniMsg, Reply
 
 from .config import Config
 from .handlers.text_handler import handle_plain_text
-from .model.github_models import get_chat_completion
+from .model.github_models import get_github_gpt_chat_completion
 from .util.context import OpenAIContext
+from .util.switcher import CurrentModel
 
-# 从全局配置中获取插件配置
-plugin_config = get_plugin_config(Config)
+# =======================内存载入数据===分割线=======================
+
+plugin_config = get_plugin_config(Config)  # 从全局配置中获取插件配置
+
+# 当前的模型，初始为github提供的gpt-4o-mini模型
+current_model = CurrentModel()
+current_model.switch_provider('github')  # 切换到github供应商后会自动选择默认的gpt-4o-mini模型
+
+# 初始化chat上下文对象
+if 'gpt' in current_model.model:
+    context = OpenAIContext()
+else:
+    context = None
+
+# =======================内存载入数据===分割线=======================
+
+
 test_matcher = on_command('test', rule=to_me(), priority=plugin_config.chat_command_priority)
 
 open_chat_fun = on_command('开启AI对话功能', rule=to_me(), priority=plugin_config.chat_command_priority)
-# 获取aichat历史消息
-context = OpenAIContext()
-
-chat_matcher = on_command(
-    '',
-    rule=to_me(),
-    priority=plugin_config.chat_command_priority
-)
-
+chat_matcher = on_command('', rule=to_me(), priority=plugin_config.chat_command_priority)
 close_chat_fun = on_command('关闭AI对话功能', rule=to_me(), priority=plugin_config.chat_command_priority)
 clear_chat_history = on_command('清除对话历史', aliases={'clear', '清除对话'}, rule=to_me(),
                                 priority=plugin_config.chat_command_priority)
+switch_model_provider = on_command('切换模型接口提供商', rule=to_me(), priority=plugin_config.chat_command_priority)
+switch_model = on_command('切换模型', rule=to_me(), priority=plugin_config.chat_command_priority)
 
 
+# 清除对话历史
 async def clear_context_history():
     context.clear_history()
 
@@ -69,17 +80,20 @@ async def chat_task(bot: Bot, event: Event, state: T_State, msg: UniMsg):
     # b = 2
 
 
+# 开启AI对话功能
 @open_chat_fun.handle()
 async def open_chat_fun_task(bot: Bot, event: Event, state: T_State):
     plugin_config.enable_chat = True
     await open_chat_fun.send('AI对话功能已开启')
 
 
+# 关闭AI对话功能
 @close_chat_fun.handle()
 async def close_chat_fun_task(bot: Bot, event: Event, state: T_State):
     plugin_config.enable_chat = False
     await close_chat_fun.send('AI对话功能已关闭')
     context.clear_history()
+    logger.info('对话历史已清除')
 
 
 @clear_chat_history.handle()
@@ -90,6 +104,7 @@ async def clear_chat_history_task(bot: Bot, event: Event, state: T_State):
 
 @chat_matcher.handle()
 async def chat_with_ai(bot: Bot, event: Event, state: T_State, msg: UniMsg):
+    # 如果AI对话功能未开启，则直接返回
     if not plugin_config.enable_chat:
         return
     # 获取用户发送内容
@@ -108,7 +123,12 @@ async def chat_with_ai(bot: Bot, event: Event, state: T_State, msg: UniMsg):
     retry_count = 0
     while not is_chat_success:
         try:
-            response = await get_chat_completion(context=context)
+            # GitHub提供的GPT模型
+            if 'gpt' in current_model.model and current_model.provider == 'github':
+                response = await get_github_gpt_chat_completion(context=context, model=current_model.model)
+            else:  # todo 其他模型
+                response = None
+
             is_chat_success = True
         except Exception as e:
             retry_count += 1
