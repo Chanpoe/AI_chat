@@ -15,10 +15,10 @@ class Context:
         # 历史消息
         self.historical_messages: List[Any] = []
         # 设置默认历史消息
-        self.set_default_history()
+        self.set_default_system_prompt()
 
     # 重置对话消息，将对话历史记录设置为角色身份对应的system prompt
-    def set_default_history(self):
+    def set_default_system_prompt(self):
         pass
 
     # 添加一条用户发送的消息
@@ -31,16 +31,16 @@ class Context:
 
     # 清除对话历史记录
     def clear_history(self):
-        self.set_default_history()
+        self.set_default_system_prompt()
 
 
 class OpenAIContext(Context):
     def __init__(self, character: str = "default"):
         super().__init__(character=character)
         # 设置默认历史消息
-        self.set_default_history()
+        self.set_default_system_prompt()
 
-    def set_default_history(self):
+    def set_default_system_prompt(self):
         # 默认角色身份
         if self.character == "default":
             self.historical_messages = [
@@ -70,7 +70,7 @@ class OpenAIContext(Context):
 class LlamaContext(OpenAIContext):
     def __init__(self, character: str = "default"):
         super().__init__(character=character)
-        self.set_default_history()
+        self.set_default_system_prompt()
 
 
 if __name__ == '__main__':
