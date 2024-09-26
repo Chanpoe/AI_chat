@@ -22,8 +22,8 @@ from nonebot_plugin_alconna.uniseg import UniMsg, Reply
 
 from .config import Config
 from .handlers.text_handler import handle_plain_text
-from .model.github_models import get_github_gpt_chat_completion
-from .util.context import OpenAIContext
+from .model.github_models import get_github_gpt_chat_completion, get_github_llama_chat_completion
+from .util.context import OpenAIContext, LlamaContext
 from .util.switcher import CurrentModel
 
 # =======================内存载入数据===分割线=======================
@@ -37,6 +37,8 @@ current_model.switch_provider('github')  # 切换到github供应商后会自动�
 # 初始化chat上下文对象
 if 'gpt' in current_model.model:
     context = OpenAIContext()
+elif 'lama' in current_model.model:
+    context = LlamaContext()
 else:
     context = None
 
@@ -50,8 +52,11 @@ chat_matcher = on_command('', rule=to_me(), priority=plugin_config.chat_command_
 close_chat_fun = on_command('关闭AI对话功能', rule=to_me(), priority=plugin_config.chat_command_priority)
 clear_chat_history = on_command('清除对话历史', aliases={'clear', '清除对话'}, rule=to_me(),
                                 priority=plugin_config.chat_command_priority)
+# todo 未完成的功能
 switch_model_provider = on_command('切换模型接口提供商', rule=to_me(), priority=plugin_config.chat_command_priority)
 switch_model = on_command('切换模型', rule=to_me(), priority=plugin_config.chat_command_priority)
+query_current_model = on_command('查询当前模型', aliases={'查看当前模型'}, rule=to_me(),
+                                 priority=plugin_config.chat_command_priority)
 
 
 # 清除对话历史
@@ -126,6 +131,9 @@ async def chat_with_ai(bot: Bot, event: Event, state: T_State, msg: UniMsg):
             # GitHub提供的GPT模型
             if 'gpt' in current_model.model and current_model.provider == 'github':
                 response = await get_github_gpt_chat_completion(context=context, model=current_model.model)
+            # GitHub提供的Llama模型
+            elif 'lama' in current_model.model and current_model.provider == 'github':
+                response = await get_github_llama_chat_completion(context=context, model=current_model.model)
             else:  # todo 其他模型
                 response = None
 
